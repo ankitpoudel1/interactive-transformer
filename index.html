@@ -11,19 +11,29 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
             background-color: #f5f5f5;
+            width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
         }
         .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 5px;
+            }
         }
         h1 {
             color: #2c3e50;
@@ -38,15 +48,24 @@
         }
         .playground-layout {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr;
             gap: 20px;
             align-items: start;
+            width: 100%;
+        }
+        @media (min-width: 1200px) {
+            .playground-layout {
+                grid-template-columns: 1fr;
+            }
         }
         .matrix-container {
             background: white;
-            padding: 15px;
+            padding: 10px;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
         }
         .info-panel {
             background: white;
@@ -60,16 +79,42 @@
             gap: 15px;
         }
         .input-container {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            border: 2px solid #e9ecef;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
         }
         .input-group {
             display: flex;
-            gap: 12px;
-            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .input-group {
+                flex-direction: column;
+            }
+            .input-container input,
+            .input-container button {
+                width: 100%;
+                margin: 0;
+            }
+            .input-container {
+                padding: 10px 5px;
+            }
+            .matrix-container,
+            .info-panel {
+                padding: 8px;
+                margin: 5px 0;
+            }
+            .sentence-display {
+                padding: 8px;
+                font-size: 14px;
+            }
+            .word-label, .cell {
+                width: 60px;
+                min-height: 25px;
+                font-size: 11px;
+                padding: 4px;
+            }
         }
         .input-container input {
             width: calc(100% - 120px);
@@ -111,12 +156,18 @@
             box-shadow: none;
         }
         .sentence-display {
+            width: 100%;
+            padding: 45px 15px 25px 15px; /* Increased top padding to make room for values */
             background-color: #fff;
-            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            line-height: 1.6;
+            margin-bottom: 15px;
+            line-height: 2.5;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            white-space: normal;
+            position: relative;
+            min-height: 150px; /* Increased for up/down arrows */
         }
         .legend {
             background: #f8f9fa;
@@ -148,14 +199,17 @@
             margin: 10px 0;
         }
         .attention-matrix {
-            margin-top: 20px;
-            padding: 20px;
+            width: 100%;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 5px;
+            position: relative;
         }
         table {
             border-collapse: separate;
             border-spacing: 2px;
-            margin: 0 auto;
+            margin: 0;
+            min-width: max-content;
         }
         th, td {
             padding: 0;
@@ -167,17 +221,34 @@
             background-color: #3498db;
             color: white;
             border-radius: 4px;
-            width: 70px; /* Fixed width for alignment */
-            min-height: 30px; /* Ensure height consistency */
-            display: flex; /* For centering text */
-            align-items: center; /* For centering text */
-            justify-content: center; /* For centering text */
+            width: 80px;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             text-align: center;
             font-size: 12px;
             box-sizing: border-box;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            pointer-events: none;
+            opacity: 1 !important; /* Make labels always visible */
+        }
+        .weight-label {
+            pointer-events: none;
+            opacity: 1 !important; /* Make labels always visible */
+        }
+        .weight-label text {
+            font-weight: bold;
+        }
+        .weight-label rect {
+            fill: white;
+            stroke: rgba(52, 152, 219, 0.3);
+            stroke-width: 1;
         }
         .cell {
-            width: 70px;
+            width: 80px;
             height: 40px;
             display: flex;
             align-items: center;
@@ -188,6 +259,7 @@
             cursor: pointer;
             color: white;
             box-sizing: border-box;
+            position: relative;
         }
         .cell:hover {
             transform: scale(1.1);
@@ -196,36 +268,72 @@
         .word-highlight {
             display: inline-block;
             padding: 3px 6px;
-            margin: 0 2px;
+            margin: 2px;
             border-radius: 3px;
-            transition: background-color 0.3s ease;
             position: relative;
-            margin-bottom: 25px; /* Make space for the indicator below */
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            z-index: 2;
         }
-        .word-score {
-            font-size: 12px;
-            color: #2c3e50;
+        .word-highlight:hover {
+            background-color: rgba(52, 152, 219, 0.2);
+        }
+        .word-highlight.source {
+            background-color: rgba(231, 76, 60, 0.3);
             font-weight: bold;
-            margin-left: 4px;
         }
-        .word-highlight .weight-indicator {
+        .word-highlight.target {
+            background-color: rgba(46, 204, 113, 0.3);
+            font-weight: bold;
+        }
+        .word-highlight .word-score {
             position: absolute;
-            bottom: -25px; /* Position below instead of above */
+            top: -25px; /* Position score above the word */
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(52, 152, 219, 0.9);
-            color: white;
+            white-space: nowrap;
+            background: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .word-relationships {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+            min-width: 200px;
+            margin-top: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .word-relationships.visible {
+            display: block;
+        }
+        .relationship-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 4px 0;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .relationship-item:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        .relationship-score {
+            margin-left: auto;
+            font-weight: bold;
+            color: #2c3e50;
+            background: rgba(52, 152, 219, 0.1);
             padding: 2px 6px;
             border-radius: 3px;
-            font-size: 10px;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            white-space: nowrap;
-            pointer-events: none; /* Prevent indicator from interfering with hover */
-        }
-        th:first-child { /* For the row labels */
-            width: 70px;
         }
         .loading {
             position: fixed;
@@ -234,7 +342,7 @@
             width: 100%;
             height: 100%;
             background: rgba(255, 255, 255, 0.9);
-            display: flex; /* Changed to flex for initial display */
+            display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -246,17 +354,16 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        /* Attention weight coloring */
         .high-attention {
-            background-color: rgba(52, 152, 219, 0.9) !important; /* Dark blue */
+            background-color: rgba(52, 152, 219, 0.9) !important;
             font-weight: bold;
         }
         .medium-attention {
-            background-color: rgba(52, 152, 219, 0.6) !important; /* Medium blue */
+            background-color: rgba(52, 152, 219, 0.6) !important;
         }
         .low-attention {
-            background-color: rgba(52, 152, 219, 0.2) !important; /* Light blue */
-            color: black; /* Text color for light background */
+            background-color: rgba(52, 152, 219, 0.2) !important;
+            color: black;
         }
         .semantic-info {
             background: white;
@@ -272,29 +379,53 @@
         }
         .semantic-pairs {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+            width: 100%;
         }
         .semantic-pair {
-            background: #f8f9fa;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 14px;
+            width: 100%;
             display: flex;
             align-items: center;
             gap: 8px;
+            padding: 4px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            margin-bottom: 4px;
         }
-        .semantic-pair .score {
-            color: #3498db;
-            font-weight: bold;
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .model-info {
+            background: #f1f8ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+        .model-info h3 {
+            margin: 0 0 8px 0;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        .model-info p {
+            margin: 0;
+            font-size: 13px;
+            color: #34495e;
+            line-height: 1.4;
         }
         .educational-section {
-            margin-top: 30px;
-            padding: 25px;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            padding: 15px;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-top: 20px;
         }
         .educational-section h2 {
             color: #2c3e50;
@@ -309,6 +440,9 @@
             border-radius: 8px;
             border-left: 4px solid #3498db;
         }
+        .concept-block:last-child {
+            margin-bottom: 0;
+        }
         .concept-block h3 {
             color: #2c3e50;
             margin: 0 0 10px 0;
@@ -321,15 +455,36 @@
         }
         .implementation-details {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .implementation-details {
+                grid-template-columns: 1fr;
+            }
+            .educational-section {
+                padding: 15px;
+            }
+            .concept-block {
+                padding: 12px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            h2 {
+                font-size: 16px;
+            }
+            h3 {
+                font-size: 15px;
+            }
+            .semantic-pairs {
+                grid-template-columns: 1fr;
+            }
         }
         .detail-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
+            width: 100%;
+            overflow: hidden;
         }
         .detail-card h4 {
             color: #2c3e50;
@@ -337,11 +492,211 @@
             font-size: 16px;
         }
         code {
-            background: #f1f3f5;
+            max-width: 100%;
+            overflow-x: auto;
+            display: block;
+            padding: 8px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        @media (max-width: 768px) {
+            .cell, .word-label, button {
+                cursor: pointer;
+                -webkit-tap-highlight-color: rgba(0,0,0,0);
+            }
+            .cell:hover {
+                transform: none;
+            }
+            .weight-indicator {
+                font-size: 10px;
+                padding: 2px 4px;
+            }
+        }
+        @media (max-width: 896px) and (orientation: landscape) {
+            .container {
+                max-height: 85vh;
+                overflow-y: auto;
+            }
+            .playground-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+        @media (max-width: 768px) {
+            input[type="text"] {
+                font-size: 16px;
+            }
+        }
+        /* Add a container for mobile view */
+        .mobile-relationships-container {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            padding: 10px;
+        }
+        @media (max-width: 768px) {
+            .word-relationships {
+                position: fixed;
+                top: auto;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                transform: none;
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                border-radius: 12px 12px 0 0;
+                max-height: 60vh;
+                overflow-y: auto;
+                background: white;
+                z-index: 2001;
+                padding: 16px;
+                box-shadow: 0 -2px 20px rgba(0,0,0,0.2);
+            }
+            .word-highlight:hover .word-relationships {
+                display: block;
+            }
+            /* Add close button for mobile */
+            .word-relationships::before {
+                content: '';
+                display: block;
+                width: 40px;
+                height: 4px;
+                background: #ccc;
+                border-radius: 2px;
+                margin: 0 auto 10px;
+            }
+            .relationship-item {
+                padding: 8px;
+                margin: 4px 0;
+                border-bottom: 1px solid rgba(0,0,0,0.05);
+            }
+            .relationship-item:last-child {
+                border-bottom: none;
+            }
+        }
+        /* Prevent body scroll when popup is open on mobile */
+        body.relationships-open {
+            overflow: hidden;
+        }
+        /* Add backdrop for mobile */
+        .relationships-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1999;
+        }
+        @media (max-width: 768px) {
+            .relationships-backdrop.active {
+                display: block;
+            }
+        }
+        .arrow-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .attention-arrow {
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .attention-arrow.visible {
+            opacity: 1;
+        }
+        .arrow-label {
+            position: absolute;
+            background: white;
             padding: 2px 6px;
             border-radius: 4px;
-            font-family: monospace;
+            font-size: 12px;
+            color: #2c3e50;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            pointer-events: none;
+        }
+        .attention-score {
+            position: absolute;
+            background: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 12px;
+            color: #2c3e50;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            pointer-events: none;
+        }
+        .high-attention-arrow {
+            stroke: rgba(52, 152, 219, 0.9);
+            stroke-width: 2;
+        }
+        .medium-attention-arrow {
+            stroke: rgba(52, 152, 219, 0.6);
+            stroke-width: 1.5;
+        }
+        .low-attention-arrow {
+            stroke: rgba(52, 152, 219, 0.3);
+            stroke-width: 1;
+        }
+        .clear-arrows-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 3;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .clear-arrows-btn.visible {
+            opacity: 1;
+        }
+        .clear-arrows-btn:hover {
+            background: #c0392b;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        .arrow-container.persistent .attention-arrow {
+            opacity: 0.9;
+        }
+        /* Add hover info for table cells */
+        .cell-hover-info {
+            position: absolute;
+            background: white;
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+            pointer-events: none;
+            font-size: 12px;
+            color: #2c3e50;
+            white-space: nowrap;
+        }
+        .cell:hover .cell-hover-info {
+            display: block;
         }
     </style>
 </head>
@@ -349,7 +704,7 @@
     <div id="loading" class="loading">
         <div class="loading-content">
             <h2>Loading Model...</h2>
-            <p>Please wait while we load the Universal Sentence Encoder...</p>
+            <p>Please wait while the Universal Sentence Encoder is loading...</p>
         </div>
     </div>
 
@@ -368,85 +723,55 @@
                 <div class="sentence-display" id="sentenceDisplay"></div>
                 <div class="attention-matrix" id="attentionMatrix"></div>
             </div>
-            
-            <div class="info-panel">
-                <div class="legend">
-                    <h2>How to Read the Visualization</h2>
-                    <p>This visualization uses Universal Sentence Encoder (USE) embeddings to simulate self-attention scores.
-                    Hover over cells to see how words relate to each other.</p>
-                    <ul>
-                        <li><strong>Dark Blue (> 0.65):</strong> Strong attention - highly similar in context</li>
-                        <li><strong>Medium Blue (0.35-0.65):</strong> Moderate attention - some similarity</li>
-                        <li><strong>Light Blue (< 0.35):</strong> Weak attention - low similarity</li>
-                    </ul>
-                </div>
+        </div>
+
+        <div class="matrix-container">
+            <div class="educational-section">
+                <h2>Understanding Transformer Attention & Universal Sentence Encoder</h2>
                 
-                <div class="attention-info" id="attentionInfo">
-                    <h3>Attention Details</h3>
-                    <p id="attentionDetails"></p>
+                <div class="concept-block">
+                    <h3>What is Attention?</h3>
+                    <p>Attention is a mechanism that allows a model to focus on different parts of the input when producing each part of the output. 
+                    In the context of language, it helps determine how much each word should "pay attention to" every other word in the sentence. 
+                    This is crucial for understanding relationships between words and capturing the context of the sentence.</p>
                 </div>
 
-                <div class="semantic-info">
-                    <h3>Common Semantic Relationships</h3>
-                    <p>Words that often have strong attention weights:</p>
-                    <div class="semantic-pairs" id="semanticPairs">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
+                <div class="concept-block">
+                    <h3>Universal Sentence Encoder (USE)</h3>
+                    <p>The Universal Sentence Encoder is a pre-trained model that converts text into high-dimensional vectors (embeddings). 
+                    These embeddings capture semantic information about the text, meaning similar phrases will have similar embeddings. 
+                    In this visualization, we use USE to generate embeddings for each word and calculate attention weights based on their similarity.</p>
+                </div>
+
+                <div class="concept-block">
+                    <h3>How This Visualization Works</h3>
+                    <p>When you enter a sentence, each word is processed through the Universal Sentence Encoder to get its embedding vector. 
+                    The attention weights are then calculated using dot product similarity between these embeddings, normalized to values between 0 and 1. 
+                    Darker blue colors indicate stronger attention (higher similarity) between words.</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="educational-section">
-        <h2>Understanding Transformer Attention & Universal Sentence Encoder</h2>
-        
-        <div class="concept-block">
-            <h3>What is Attention?</h3>
-            <p>Attention is a mechanism that allows a model to focus on different parts of the input when producing each part of the output. 
-            In the context of language, it helps determine how much each word should "pay attention to" every other word in the sentence. 
-            This is crucial for understanding relationships between words and capturing the context of the sentence.</p>
-        </div>
+        <div class="matrix-container">
+            <div class="educational-section">
+                <h2>Implementation Details</h2>
+                <div class="concept-block">
+                    <h3>Embedding Generation</h3>
+                    <p>Each word is embedded using TensorFlow.js and the Universal Sentence Encoder model, producing a 512-dimensional vector:</p>
+                    <code>const embeddings = await model.embed(words);</code>
+                </div>
 
-        <div class="concept-block">
-            <h3>Universal Sentence Encoder (USE)</h3>
-            <p>The Universal Sentence Encoder is a pre-trained model that converts text into high-dimensional vectors (embeddings). 
-            These embeddings capture semantic information about the text, meaning similar phrases will have similar embeddings. 
-            In this visualization, we use USE to generate embeddings for each word and calculate attention weights based on their similarity.</p>
-        </div>
+                <div class="concept-block">
+                    <h3>Attention Weight Calculation</h3>
+                    <p>Attention weights are computed using dot product similarity between word embeddings, then normalized:</p>
+                    <code>similarity = tf.dot(tensor_i, tensor_j);</code>
+                </div>
 
-        <div class="concept-block">
-            <h3>How This Visualization Works</h3>
-            <p>When you enter a sentence, each word is processed through the Universal Sentence Encoder to get its embedding vector. 
-            The attention weights are then calculated using dot product similarity between these embeddings, normalized to values between 0 and 1. 
-            Darker blue colors indicate stronger attention (higher similarity) between words.</p>
-        </div>
-
-        <h3>Implementation Details</h3>
-        <div class="implementation-details">
-            <div class="detail-card">
-                <h4>Embedding Generation</h4>
-                <p>Each word is embedded using TensorFlow.js and the Universal Sentence Encoder model, producing a 512-dimensional vector:</p>
-                <code>const embeddings = await model.embed(words);</code>
-            </div>
-
-            <div class="detail-card">
-                <h4>Attention Weight Calculation</h4>
-                <p>Attention weights are computed using dot product similarity between word embeddings, then normalized:</p>
-                <code>similarity = tf.dot(tensor_i, tensor_j);</code>
-            </div>
-
-            <div class="detail-card">
-                <h4>Visualization</h4>
-                <p>The attention matrix shows pairwise relationships between words. Each cell (i,j) represents how much word i attends to word j.
-                The weights are color-coded for easy interpretation.</p>
-            </div>
-
-            <div class="detail-card">
-                <h4>Educational Value</h4>
-                <p>This visualization helps understand:
-                - How transformers process relationships between words
-                - The role of attention in natural language processing
-                - How semantic similarity is captured in modern language models</p>
+                <div class="concept-block">
+                    <h3>Visualization</h3>
+                    <p>The attention matrix shows pairwise relationships between words. Each cell (i,j) represents how much word i attends to word j.
+                    The weights are color-coded for easy interpretation.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -527,13 +852,13 @@
 
         function createAttentionMatrix() {
             const matrixDiv = document.getElementById('attentionMatrix');
-            matrixDiv.innerHTML = ''; // Clear previous matrix
+            matrixDiv.innerHTML = '';
             const table = document.createElement('table');
             
-            // Create header row (words as column headers)
+            // Create header row
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
-            headerRow.appendChild(document.createElement('th')); // Empty top-left corner
+            headerRow.appendChild(document.createElement('th'));
             sentence.forEach(word => {
                 const th = document.createElement('th');
                 const label = document.createElement('div');
@@ -545,12 +870,11 @@
             thead.appendChild(headerRow);
             table.appendChild(thead);
             
-            // Create table body with attention weights
+            // Create table body
             const tbody = document.createElement('tbody');
             for(let i = 0; i < sentence.length; i++) {
                 const row = document.createElement('tr');
                 
-                // Row header (word from sentence[i])
                 const th = document.createElement('th');
                 const label = document.createElement('div');
                 label.className = 'word-label';
@@ -561,14 +885,9 @@
                 for(let j = 0; j < sentence.length; j++) {
                     const td = document.createElement('td');
                     const cell = document.createElement('div');
-                    
-                    // Get weight from the pre-calculated global attentionWeights matrix
-                    const weight = (attentionWeights && attentionWeights[i] && typeof attentionWeights[i][j] !== 'undefined')
-                                   ? attentionWeights[i][j]
-                                   : 0; // Default to 0 if something is wrong
+                    const weight = attentionWeights[i][j];
                     
                     cell.className = 'cell';
-                    // Thresholds for normalized (0-1) scores. Adjust these as needed.
                     if (weight > 0.65) {
                         cell.classList.add('high-attention');
                     } else if (weight > 0.35) {
@@ -594,121 +913,237 @@
         }
 
         function handleCellHover(event) {
-            const cell = event.target;
+            const cell = event.currentTarget;
             const fromIdx = parseInt(cell.getAttribute('data-from'));
             const toIdx = parseInt(cell.getAttribute('data-to'));
             const weight = parseFloat(cell.textContent);
 
-            // Clear any existing timeout
-            if (hideInfoTimeout) {
-                clearTimeout(hideInfoTimeout);
-            }
-
-            // Highlight words in the sentence display and show weights
-            const wordsInDisplay = document.querySelectorAll('.word-highlight');
-            
-            // Reset all words first
-            wordsInDisplay.forEach(word => {
-                word.style.backgroundColor = 'transparent';
-                word.querySelector('.word-score').textContent = ''; // Clear scores
-                // Remove any existing weight indicators
-                const oldIndicator = word.querySelector('.weight-indicator');
-                if (oldIndicator) oldIndicator.remove();
+            // Highlight words in the sentence
+            const words = document.querySelectorAll('.word-highlight');
+            words.forEach(word => {
+                word.classList.remove('source', 'target');
+                word.querySelector('.word-score').textContent = '';
             });
 
-            // Add highlighting and weight indicators
-            if (wordsInDisplay[fromIdx]) {
-                wordsInDisplay[fromIdx].style.backgroundColor = 'rgba(231, 76, 60, 0.3)';
-                wordsInDisplay[fromIdx].querySelector('.word-score').textContent = ` →${weight.toFixed(2)}`; // Add score in sentence
-                const fromIndicator = document.createElement('div');
-                fromIndicator.className = 'weight-indicator';
-                fromIndicator.textContent = `→ ${weight.toFixed(2)}`;
-                wordsInDisplay[fromIdx].appendChild(fromIndicator);
-                requestAnimationFrame(() => {
-                    fromIndicator.classList.add('visible');
-                });
+            if (words[fromIdx]) {
+                words[fromIdx].classList.add('source');
+                words[fromIdx].querySelector('.word-score').textContent = ` →${weight.toFixed(2)}`;
             }
-            if (wordsInDisplay[toIdx]) {
-                wordsInDisplay[toIdx].style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
-                wordsInDisplay[toIdx].querySelector('.word-score').textContent = ` ←${weight.toFixed(2)}`; // Add score in sentence
-                const toIndicator = document.createElement('div');
-                toIndicator.className = 'weight-indicator';
-                toIndicator.textContent = `← ${weight.toFixed(2)}`;
-                wordsInDisplay[toIdx].appendChild(toIndicator);
-                requestAnimationFrame(() => {
-                    toIndicator.classList.add('visible');
-                });
+            if (words[toIdx]) {
+                words[toIdx].classList.add('target');
+                words[toIdx].querySelector('.word-score').textContent = ` ←${weight.toFixed(2)}`;
             }
-
-            // Show attention details
-            const attentionInfo = document.getElementById('attentionInfo');
-            const attentionDetails = document.getElementById('attentionDetails');
-            
-            let relationshipDesc = '';
-            if (weight > 0.65) {
-                relationshipDesc = 'highly similar (strong attention)';
-            } else if (weight > 0.35) {
-                relationshipDesc = 'moderately similar (medium attention)';
-            } else {
-                relationshipDesc = 'less similar (weak attention)';
-            }
-
-            attentionDetails.innerHTML = `
-                <strong>${sentence[fromIdx]}</strong> is ${relationshipDesc} to <strong>${sentence[toIdx]}</strong> 
-                with a normalized similarity score of <strong>${weight.toFixed(2)}</strong>.
-            `;
-            
-            attentionInfo.classList.add('visible');
         }
 
-        let hideInfoTimeout;
         function handleCellLeave() {
-            // Set a longer timeout to prevent flickering
-            hideInfoTimeout = setTimeout(() => {
-                // Clear scores in the sentence
-                document.querySelectorAll('.word-score').forEach(score => {
-                    score.textContent = '';
-                });
-
-                // Hide weight indicators with transition
-                document.querySelectorAll('.weight-indicator').forEach(indicator => {
-                    indicator.classList.remove('visible');
-                });
-
-                // Reset backgrounds
-                document.querySelectorAll('.word-highlight').forEach(word => {
-                    word.style.backgroundColor = 'transparent';
-                });
-                
-                // Hide the info box
-                document.getElementById('attentionInfo').classList.remove('visible');
-
-                // Clean up indicators after transition
-                setTimeout(() => {
-                    document.querySelectorAll('.weight-indicator').forEach(indicator => {
-                        indicator.remove();
-                    });
-                }, 300);
-            }, 200);
+            // Clear highlighting
+            const words = document.querySelectorAll('.word-highlight');
+            words.forEach(word => {
+                word.classList.remove('source', 'target');
+                word.querySelector('.word-score').textContent = '';
+            });
         }
 
         function displaySentence() {
             const display = document.getElementById('sentenceDisplay');
             if (sentence.length > 0) {
-                display.innerHTML = sentence.map(word => 
-                    `<span class="word-highlight" data-word="${word}">
-                        ${word}<span class="word-score"></span>
-                    </span>`
-                ).join(' ');
+                display.innerHTML = sentence.map((word, idx) => `
+                    <span class="word-highlight" 
+                          data-word="${word}" 
+                          data-index="${idx}"
+                          onmouseenter="showWordArrows(event, false)"
+                          onmouseleave="handleWordLeave(event)"
+                          onclick="toggleWordArrows(event)">
+                        ${word}
+                        <span class="word-score"></span>
+                    </span>
+                `).join(' ');
+
+                // Add clear arrows button
+                const clearButton = document.createElement('button');
+                clearButton.className = 'clear-arrows-btn';
+                clearButton.textContent = 'Clear Arrows';
+                clearButton.onclick = clearAllArrows;
+                display.appendChild(clearButton);
             } else {
                 display.innerHTML = "<em>No sentence entered.</em>";
             }
         }
 
+        function showWordArrows(event, isPersistent = false) {
+            const word = event.currentTarget;
+            const wordIndex = parseInt(word.dataset.index);
+            const wordRect = word.getBoundingClientRect();
+            const sentenceDisplay = document.getElementById('sentenceDisplay');
+            const displayRect = sentenceDisplay.getBoundingClientRect();
+
+            // If not persistent and there's a persistent arrow container, don't show temporary arrows
+            const existingContainer = sentenceDisplay.querySelector('.arrow-container');
+            if (!isPersistent && existingContainer && existingContainer.classList.contains('persistent')) {
+                return;
+            }
+
+            // Remove existing arrow container if it's not persistent or we're making new persistent arrows
+            if (existingContainer && (!existingContainer.classList.contains('persistent') || isPersistent)) {
+                existingContainer.remove();
+            }
+
+            // Create SVG container
+            const arrowContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            arrowContainer.classList.add('arrow-container');
+            if (isPersistent) {
+                arrowContainer.classList.add('persistent');
+            }
+            arrowContainer.style.position = 'absolute';
+            arrowContainer.style.top = '0';
+            arrowContainer.style.left = '0';
+            arrowContainer.style.width = '100%';
+            arrowContainer.style.height = '100%';
+
+            // Show clear button if arrows are persistent
+            const clearButton = sentenceDisplay.querySelector('.clear-arrows-btn');
+            if (clearButton) {
+                clearButton.classList.toggle('visible', isPersistent);
+            }
+
+            // Create arrows (existing arrow creation code remains the same)
+            const words = sentenceDisplay.querySelectorAll('.word-highlight');
+            words.forEach((targetWord, targetIndex) => {
+                if (targetIndex !== wordIndex) {
+                    const targetRect = targetWord.getBoundingClientRect();
+                    const weight = attentionWeights[wordIndex][targetIndex];
+
+                    // Calculate positions relative to sentence display
+                    const x1 = wordRect.left - displayRect.left + wordRect.width/2;
+                    const y1 = wordRect.top - displayRect.top + wordRect.height/2;
+                    const x2 = targetRect.left - displayRect.left + targetRect.width/2;
+                    const y2 = targetRect.top - displayRect.top + targetRect.height/2;
+
+                    // Alternate between up and down based on target index and weight
+                    const isUp = targetIndex % 2 === 0;
+                    const arcHeight = isUp ? -30 - (weight * 20) : 30 + (weight * 20);
+
+                    // Create arrow group
+                    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    arrow.classList.add('attention-arrow');
+
+                    // Calculate control points for the curve
+                    const cp1x = x1 + (x2 - x1) * 0.25;
+                    const cp1y = y1 + arcHeight;
+                    const cp2x = x1 + (x2 - x1) * 0.75;
+                    const cp2y = y1 + arcHeight;
+
+                    // Create the curved line
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    const d = `M ${x1},${y1} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${x2},${y2}`;
+                    line.setAttribute("d", d);
+                    line.setAttribute("fill", "none");
+                    line.setAttribute("stroke", `rgba(52, 152, 219, ${0.3 + weight * 0.6})`);
+                    line.setAttribute("stroke-width", 1 + weight * 2);
+
+                    // Calculate angle for arrowhead
+                    const dx = x2 - cp2x;
+                    const dy = y2 - cp2y;
+                    const angle = Math.atan2(dy, dx);
+
+                    // Create arrowhead
+                    const arrowhead = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    const arrowLength = 8 + weight * 4;
+                    const arrowWidth = 4 + weight * 2;
+                    const arrowX = x2 - arrowLength * Math.cos(angle);
+                    const arrowY = y2 - arrowLength * Math.sin(angle);
+                    const arrowPath = `M ${x2},${y2} L ${arrowX - arrowWidth * Math.sin(angle)},${arrowY + arrowWidth * Math.cos(angle)} L ${arrowX + arrowWidth * Math.sin(angle)},${arrowY - arrowWidth * Math.cos(angle)} Z`;
+                    arrowhead.setAttribute("d", arrowPath);
+                    arrowhead.setAttribute("fill", `rgba(52, 152, 219, ${0.3 + weight * 0.6})`);
+
+                    // Add label
+                    const labelX = (cp1x + cp2x) / 2;
+                    const labelY = y1 + arcHeight + (isUp ? -10 : 20);
+                    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    label.setAttribute("x", labelX);
+                    label.setAttribute("y", labelY);
+                    label.setAttribute("text-anchor", "middle");
+                    label.setAttribute("fill", "#2c3e50");
+                    label.setAttribute("font-size", "12");
+                    label.textContent = weight.toFixed(2);
+
+                    // Add white background for label
+                    const labelBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    const padding = 4;
+                    const bbox = { width: 30, height: 15 };
+                    labelBg.setAttribute("x", labelX - bbox.width/2 - padding);
+                    labelBg.setAttribute("y", labelY - bbox.height + 2);
+                    labelBg.setAttribute("width", bbox.width + padding * 2);
+                    labelBg.setAttribute("height", bbox.height + padding);
+                    labelBg.setAttribute("fill", "white");
+                    labelBg.setAttribute("rx", "3");
+
+                    arrow.appendChild(line);
+                    arrow.appendChild(arrowhead);
+                    arrow.appendChild(labelBg);
+                    arrow.appendChild(label);
+                    arrowContainer.appendChild(arrow);
+                }
+            });
+
+            sentenceDisplay.appendChild(arrowContainer);
+
+            // Make arrows visible with a slight delay for animation
+            setTimeout(() => {
+                arrowContainer.querySelectorAll('.attention-arrow').forEach(arrow => {
+                    arrow.classList.add('visible');
+                });
+            }, 50);
+        }
+
+        function handleWordLeave(event) {
+            const sentenceDisplay = document.getElementById('sentenceDisplay');
+            const arrowContainer = sentenceDisplay.querySelector('.arrow-container');
+            if (arrowContainer && !arrowContainer.classList.contains('persistent')) {
+                hideWordArrows();
+            }
+        }
+
+        function toggleWordArrows(event) {
+            const sentenceDisplay = document.getElementById('sentenceDisplay');
+            const existingContainer = sentenceDisplay.querySelector('.arrow-container');
+            
+            if (existingContainer && existingContainer.classList.contains('persistent')) {
+                clearAllArrows();
+            } else {
+                showWordArrows(event, true);
+            }
+        }
+
+        function clearAllArrows() {
+            const sentenceDisplay = document.getElementById('sentenceDisplay');
+            const arrowContainer = sentenceDisplay.querySelector('.arrow-container');
+            if (arrowContainer) {
+                arrowContainer.querySelectorAll('.attention-arrow').forEach(arrow => {
+                    arrow.classList.remove('visible');
+                });
+                setTimeout(() => arrowContainer.remove(), 300);
+            }
+            
+            // Hide clear button
+            const clearButton = sentenceDisplay.querySelector('.clear-arrows-btn');
+            if (clearButton) {
+                clearButton.classList.remove('visible');
+            }
+        }
+
+        function hideWordArrows() {
+            const arrowContainer = document.querySelector('.arrow-container');
+            if (arrowContainer && !arrowContainer.classList.contains('persistent')) {
+                arrowContainer.querySelectorAll('.attention-arrow').forEach(arrow => {
+                    arrow.classList.remove('visible');
+                });
+                setTimeout(() => arrowContainer.remove(), 300);
+            }
+        }
+
         async function updateVisualization() {
             if (!model) {
-                // This case should ideally be handled by the button being disabled
-                // or loadModel showing an error.
                 document.getElementById('loading').innerHTML = 
                     '<div class="loading-content"><h2>Error</h2><p>Model not loaded. Cannot update.</p></div>';
                 document.getElementById('loading').style.display = 'flex';
@@ -720,66 +1155,33 @@
             loadingDiv.innerHTML = 
                 '<div class="loading-content"><h2>Calculating...</h2><p>Fetching embeddings and computing attention scores...</p></div>';
             
-            // Disable button during processing
             document.getElementById('updateButton').disabled = true;
 
             try {
                 const input = document.getElementById('sentenceInput').value;
-                // Split by one or more spaces, and filter out empty strings
                 sentence = input.trim().split(/\s+/).filter(w => w.length > 0);
                 
                 if (sentence.length === 0) {
                     document.getElementById('attentionMatrix').innerHTML = '<p style="text-align:center;">Please enter a sentence.</p>';
-                    displaySentence(); // Update sentence display to show empty state
+                    displaySentence();
                     loadingDiv.style.display = 'none';
                     document.getElementById('updateButton').disabled = false;
                     return;
                 }
                 
-                // Calculate new attention weights using USE embeddings
                 attentionWeights = await calculateAttentionWeights(sentence);
-                
-                // Clear existing visualization elements that will be rebuilt
                 document.getElementById('attentionMatrix').innerHTML = '';
-                
-                // Update visualization
                 displaySentence();
                 createAttentionMatrix();
-
-                updateSemanticPairs();
 
                 loadingDiv.style.display = 'none';
             } catch (error) {
                 console.error('Error updating visualization:', error);
                 loadingDiv.innerHTML = 
                     '<div class="loading-content"><h2>Error</h2><p>Failed to calculate attention weights. Please check the console for details.</p></div>';
-                // Keep loading visible to show error, or hide after a delay
-                // setTimeout(() => { loadingDiv.style.display = 'none'; }, 3000);
             } finally {
-                 // Re-enable button
                 document.getElementById('updateButton').disabled = false;
             }
-        }
-
-        function updateSemanticPairs() {
-            const commonPairs = [
-                { words: ['play', 'game'], desc: 'Action & Object', score: 0.85 },
-                { words: ['I', 'me'], desc: 'Personal Pronouns', score: 0.82 },
-                { words: ['we', 'us'], desc: 'Group Reference', score: 0.80 },
-                { words: ['the', 'a'], desc: 'Articles', score: 0.75 },
-                { words: ['is', 'are'], desc: 'Being Verbs', score: 0.78 },
-                { words: ['good', 'great'], desc: 'Positive Adjectives', score: 0.72 },
-                { words: ['run', 'running'], desc: 'Verb Forms', score: 0.70 },
-                { words: ['happy', 'glad'], desc: 'Emotions', score: 0.68 }
-            ];
-
-            const pairsContainer = document.getElementById('semanticPairs');
-            pairsContainer.innerHTML = commonPairs.map(pair => `
-                <div class="semantic-pair">
-                    <span class="score">${pair.score.toFixed(2)}</span>
-                    <span>${pair.words.join(' → ')}</span>
-                </div>
-            `).join('');
         }
 
         // Initialize by loading the model
