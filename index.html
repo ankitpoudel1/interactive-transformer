@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Transformer Self-Attention Visualization (USE-based)</title>
+    <!-- Add TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+    <!-- Add TensorFlow Universal Sentence Encoder -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin: 0 0 20px 0;
+            font-size: 24px;
+        }
+        h2 {
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            color: #34495e;
+        }
+        .playground-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        .matrix-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .info-panel {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .input-container {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+        .input-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .input-container input {
+            width: calc(100% - 120px);
+            margin-right: 10px;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .input-container input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+        }
+        .input-container button {
+            width: 120px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-container button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            background: linear-gradient(135deg, #3498db, #2475a8);
+        }
+        .input-container button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .sentence-display {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .legend {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .legend ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .legend li {
+            margin: 5px 0;
+        }
+        .attention-info {
+            margin: 15px 0;
+            padding: 12px;
+            background-color: #fff3cd;
+            border-radius: 6px;
+            font-size: 14px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .explanation {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #666;
+            margin: 10px 0;
+        }
+        .attention-matrix {
+            margin-top: 20px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: separate;
+            border-spacing: 2px;
+            margin: 0 auto;
+        }
+        th, td {
+            padding: 0;
+            margin: 0;
+        }
+        .word-label {
+            font-weight: bold;
+            padding: 8px;
+            background-color: #3498db;
+            color: white;
+            border-radius: 4px;
+            width: 70px; /* Fixed width for alignment */
+            min-height: 30px; /* Ensure height consistency */
+            display: flex; /* For centering text */
+            align-items: center; /* For centering text */
+            justify-content: center; /* For centering text */
+            text-align: center;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+        .cell {
+            width: 70px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            cursor: pointer;
+            color: white;
+            box-sizing: border-box;
+        }
+        .cell:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+        }
+        .word-highlight {
+            display: inline-block;
+            padding: 3px 6px;
+            margin: 0 2px;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+            position: relative;
+            margin-bottom: 25px; /* Make space for the indicator below */
+        }
+        .word-score {
+            font-size: 12px;
+            color: #2c3e50;
+            font-weight: bold;
+            margin-left: 4px;
+        }
+        .word-highlight .weight-indicator {
+            position: absolute;
+            bottom: -25px; /* Position below instead of above */
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 152, 219, 0.9);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            white-space: nowrap;
+            pointer-events: none; /* Prevent indicator from interfering with hover */
+        }
+        th:first-child { /* For the row labels */
+            width: 70px;
+        }
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex; /* Changed to flex for initial display */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-content {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        /* Attention weight coloring */
+        .high-attention {
+            background-color: rgba(52, 152, 219, 0.9) !important; /* Dark blue */
+            font-weight: bold;
+        }
+        .medium-attention {
+            background-color: rgba(52, 152, 219, 0.6) !important; /* Medium blue */
+        }
+        .low-attention {
+            background-color: rgba(52, 152, 219, 0.2) !important; /* Light blue */
+            color: black; /* Text color for light background */
+        }
+        .semantic-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #e9ecef;
+        }
+        .semantic-info h3 {
+            font-size: 16px;
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .semantic-pairs {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .semantic-pair {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .semantic-pair .score {
+            color: #3498db;
+            font-weight: bold;
+        }
+        .educational-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .educational-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .concept-block {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .concept-block h3 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        .concept-block p {
+            color: #34495e;
+            line-height: 1.6;
+            margin: 0;
+        }
+        .implementation-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .detail-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .detail-card h4 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        code {
+            background: #f1f3f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div class="loading-content">
+            <h2>Loading Model...</h2>
+            <p>Please wait while we load the Universal Sentence Encoder...</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Interactive Transformer Self-Attention Visualization (USE-based)</h1>
+        
+        <div class="input-container">
+            <div class="input-group">
+                <input type="text" id="sentenceInput" placeholder="Enter a sentence..." value="Let's play a game us together">
+                <button onclick="updateVisualization()" id="updateButton" disabled>Update</button>
+            </div>
+        </div>
+
+        <div class="playground-layout">
+            <div class="matrix-container">
+                <div class="sentence-display" id="sentenceDisplay"></div>
+                <div class="attention-matrix" id="attentionMatrix"></div>
+            </div>
+            
+            <div class="info-panel">
+                <div class="legend">
+                    <h2>How to Read the Visualization</h2>
+                    <p>This visualization uses Universal Sentence Encoder (USE) embeddings to simulate self-attention scores.
+                    Hover over cells to see how words relate to each other.</p>
+                    <ul>
+                        <li><strong>Dark Blue (> 0.65):</strong> Strong attention - highly similar in context</li>
+                        <li><strong>Medium Blue (0.35-0.65):</strong> Moderate attention - some similarity</li>
+                        <li><strong>Light Blue (< 0.35):</strong> Weak attention - low similarity</li>
+                    </ul>
+                </div>
+                
+                <div class="attention-info" id="attentionInfo">
+                    <h3>Attention Details</h3>
+                    <p id="attentionDetails"></p>
+                </div>
+
+                <div class="semantic-info">
+                    <h3>Common Semantic Relationships</h3>
+                    <p>Words that often have strong attention weights:</p>
+                    <div class="semantic-pairs" id="semanticPairs">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="educational-section">
+        <h2>Understanding Transformer Attention & Universal Sentence Encoder</h2>
+        
+        <div class="concept-block">
+            <h3>What is Attention?</h3>
+            <p>Attention is a mechanism that allows a model to focus on different parts of the input when producing each part of the output. 
+            In the context of language, it helps determine how much each word should "pay attention to" every other word in the sentence. 
+            This is crucial for understanding relationships between words and capturing the context of the sentence.</p>
+        </div>
+
+        <div class="concept-block">
+            <h3>Universal Sentence Encoder (USE)</h3>
+            <p>The Universal Sentence Encoder is a pre-trained model that converts text into high-dimensional vectors (embeddings). 
+            These embeddings capture semantic information about the text, meaning similar phrases will have similar embeddings. 
+            In this visualization, we use USE to generate embeddings for each word and calculate attention weights based on their similarity.</p>
+        </div>
+
+        <div class="concept-block">
+            <h3>How This Visualization Works</h3>
+            <p>When you enter a sentence, each word is processed through the Universal Sentence Encoder to get its embedding vector. 
+            The attention weights are then calculated using dot product similarity between these embeddings, normalized to values between 0 and 1. 
+            Darker blue colors indicate stronger attention (higher similarity) between words.</p>
+        </div>
+
+        <h3>Implementation Details</h3>
+        <div class="implementation-details">
+            <div class="detail-card">
+                <h4>Embedding Generation</h4>
+                <p>Each word is embedded using TensorFlow.js and the Universal Sentence Encoder model, producing a 512-dimensional vector:</p>
+                <code>const embeddings = await model.embed(words);</code>
+            </div>
+
+            <div class="detail-card">
+                <h4>Attention Weight Calculation</h4>
+                <p>Attention weights are computed using dot product similarity between word embeddings, then normalized:</p>
+                <code>similarity = tf.dot(tensor_i, tensor_j);</code>
+            </div>
+
+            <div class="detail-card">
+                <h4>Visualization</h4>
+                <p>The attention matrix shows pairwise relationships between words. Each cell (i,j) represents how much word i attends to word j.
+                The weights are color-coded for easy interpretation.</p>
+            </div>
+
+            <div class="detail-card">
+                <h4>Educational Value</h4>
+                <p>This visualization helps understand:
+                - How transformers process relationships between words
+                - The role of attention in natural language processing
+                - How semantic similarity is captured in modern language models</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sentence = ["Let's", "play", "a", "game", "us", "together"]; // Default sentence
+        let attentionWeights = []; // Will store the USE-based attention matrix
+        let model = null;
+
+        // Load Universal Sentence Encoder model
+        async function loadModel() {
+            try {
+                model = await use.load();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('updateButton').disabled = false;
+                updateVisualization(); // Initial visualization with default sentence
+            } catch (error) {
+                console.error('Error loading model:', error);
+                document.getElementById('loading').innerHTML = 
+                    '<div class="loading-content"><h2>Error Loading Model</h2><p>Failed to load the Universal Sentence Encoder. Please check your internet connection and refresh the page. See console for details.</p></div>';
+            }
+        }
+
+        // Calculate attention weights using USE embeddings and dot product similarity
+        async function calculateAttentionWeights(words) {
+            if (!model || words.length === 0) return [];
+
+            const embeddingsTensor = await model.embed(words);
+            const embeddingsArray = await embeddingsTensor.array(); // JS array of embedding vectors
+            tf.dispose(embeddingsTensor); // Dispose the main tensor once we have the JS array
+
+            const numWords = words.length;
+            const rawAttentionMatrix = [];
+
+            for (let i = 0; i < numWords; i++) {
+                rawAttentionMatrix[i] = [];
+                for (let j = 0; j < numWords; j++) {
+                    // Use tf.tidy to manage memory for intermediate tensors in dot product
+                    const similarity = tf.tidy(() => {
+                        const tensor_i = tf.tensor(embeddingsArray[i]);
+                        const tensor_j = tf.tensor(embeddingsArray[j]);
+                        return tf.dot(tensor_i, tensor_j).dataSync()[0];
+                    });
+                    rawAttentionMatrix[i][j] = similarity;
+                }
+            }
+
+            // Normalize the raw attention matrix (dot products) to be between 0 and 1
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+            if (numWords > 0) {
+                for (let i = 0; i < numWords; i++) {
+                    for (let j = 0; j < numWords; j++) {
+                        if (rawAttentionMatrix[i][j] < minVal) minVal = rawAttentionMatrix[i][j];
+                        if (rawAttentionMatrix[i][j] > maxVal) maxVal = rawAttentionMatrix[i][j];
+                    }
+                }
+            } else {
+                return []; // No words, return empty matrix
+            }
+            
+
+            const normalizedAttentionMatrix = [];
+            const range = maxVal - minVal;
+
+            for (let i = 0; i < numWords; i++) {
+                normalizedAttentionMatrix[i] = [];
+                for (let j = 0; j < numWords; j++) {
+                    if (range > 1e-6) { // Avoid division by zero or tiny range
+                        normalizedAttentionMatrix[i][j] = (rawAttentionMatrix[i][j] - minVal) / range;
+                    } else { // If all values are the same (or very close)
+                        normalizedAttentionMatrix[i][j] = 0.5; // Assign a neutral value
+                    }
+                }
+            }
+            return normalizedAttentionMatrix;
+        }
+
+        function createAttentionMatrix() {
+            const matrixDiv = document.getElementById('attentionMatrix');
+            matrixDiv.innerHTML = ''; // Clear previous matrix
+            const table = document.createElement('table');
+            
+            // Create header row (words as column headers)
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headerRow.appendChild(document.createElement('th')); // Empty top-left corner
+            sentence.forEach(word => {
+                const th = document.createElement('th');
+                const label = document.createElement('div');
+                label.className = 'word-label';
+                label.textContent = word;
+                th.appendChild(label);
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create table body with attention weights
+            const tbody = document.createElement('tbody');
+            for(let i = 0; i < sentence.length; i++) {
+                const row = document.createElement('tr');
+                
+                // Row header (word from sentence[i])
+                const th = document.createElement('th');
+                const label = document.createElement('div');
+                label.className = 'word-label';
+                label.textContent = sentence[i];
+                th.appendChild(label);
+                row.appendChild(th);
+                
+                for(let j = 0; j < sentence.length; j++) {
+                    const td = document.createElement('td');
+                    const cell = document.createElement('div');
+                    
+                    // Get weight from the pre-calculated global attentionWeights matrix
+                    const weight = (attentionWeights && attentionWeights[i] && typeof attentionWeights[i][j] !== 'undefined')
+                                   ? attentionWeights[i][j]
+                                   : 0; // Default to 0 if something is wrong
+                    
+                    cell.className = 'cell';
+                    // Thresholds for normalized (0-1) scores. Adjust these as needed.
+                    if (weight > 0.65) {
+                        cell.classList.add('high-attention');
+                    } else if (weight > 0.35) {
+                        cell.classList.add('medium-attention');
+                    } else {
+                        cell.classList.add('low-attention');
+                    }
+                    
+                    cell.textContent = weight.toFixed(2);
+                    cell.setAttribute('data-from', i);
+                    cell.setAttribute('data-to', j);
+                    
+                    cell.addEventListener('mouseenter', handleCellHover);
+                    cell.addEventListener('mouseleave', handleCellLeave);
+                    
+                    td.appendChild(cell);
+                    row.appendChild(td);
+                }
+                tbody.appendChild(row);
+            }
+            table.appendChild(tbody);
+            matrixDiv.appendChild(table);
+        }
+
+        function handleCellHover(event) {
+            const cell = event.target;
+            const fromIdx = parseInt(cell.getAttribute('data-from'));
+            const toIdx = parseInt(cell.getAttribute('data-to'));
+            const weight = parseFloat(cell.textContent);
+
+            // Clear any existing timeout
+            if (hideInfoTimeout) {
+                clearTimeout(hideInfoTimeout);
+            }
+
+            // Highlight words in the sentence display and show weights
+            const wordsInDisplay = document.querySelectorAll('.word-highlight');
+            
+            // Reset all words first
+            wordsInDisplay.forEach(word => {
+                word.style.backgroundColor = 'transparent';
+                word.querySelector('.word-score').textContent = ''; // Clear scores
+                // Remove any existing weight indicators
+                const oldIndicator = word.querySelector('.weight-indicator');
+                if (oldIndicator) oldIndicator.remove();
+            });
+
+            // Add highlighting and weight indicators
+            if (wordsInDisplay[fromIdx]) {
+                wordsInDisplay[fromIdx].style.backgroundColor = 'rgba(231, 76, 60, 0.3)';
+                wordsInDisplay[fromIdx].querySelector('.word-score').textContent = ` →${weight.toFixed(2)}`; // Add score in sentence
+                const fromIndicator = document.createElement('div');
+                fromIndicator.className = 'weight-indicator';
+                fromIndicator.textContent = `→ ${weight.toFixed(2)}`;
+                wordsInDisplay[fromIdx].appendChild(fromIndicator);
+                requestAnimationFrame(() => {
+                    fromIndicator.classList.add('visible');
+                });
+            }
+            if (wordsInDisplay[toIdx]) {
+                wordsInDisplay[toIdx].style.backgroundColor = 'rgba(46, 204, 113, 0.3)';
+                wordsInDisplay[toIdx].querySelector('.word-score').textContent = ` ←${weight.toFixed(2)}`; // Add score in sentence
+                const toIndicator = document.createElement('div');
+                toIndicator.className = 'weight-indicator';
+                toIndicator.textContent = `← ${weight.toFixed(2)}`;
+                wordsInDisplay[toIdx].appendChild(toIndicator);
+                requestAnimationFrame(() => {
+                    toIndicator.classList.add('visible');
+                });
+            }
+
+            // Show attention details
+            const attentionInfo = document.getElementById('attentionInfo');
+            const attentionDetails = document.getElementById('attentionDetails');
+            
+            let relationshipDesc = '';
+            if (weight > 0.65) {
+                relationshipDesc = 'highly similar (strong attention)';
+            } else if (weight > 0.35) {
+                relationshipDesc = 'moderately similar (medium attention)';
+            } else {
+                relationshipDesc = 'less similar (weak attention)';
+            }
+
+            attentionDetails.innerHTML = `
+                <strong>${sentence[fromIdx]}</strong> is ${relationshipDesc} to <strong>${sentence[toIdx]}</strong> 
+                with a normalized similarity score of <strong>${weight.toFixed(2)}</strong>.
+            `;
+            
+            attentionInfo.classList.add('visible');
+        }
+
+        let hideInfoTimeout;
+        function handleCellLeave() {
+            // Set a longer timeout to prevent flickering
+            hideInfoTimeout = setTimeout(() => {
+                // Clear scores in the sentence
+                document.querySelectorAll('.word-score').forEach(score => {
+                    score.textContent = '';
+                });
+
+                // Hide weight indicators with transition
+                document.querySelectorAll('.weight-indicator').forEach(indicator => {
+                    indicator.classList.remove('visible');
+                });
+
+                // Reset backgrounds
+                document.querySelectorAll('.word-highlight').forEach(word => {
+                    word.style.backgroundColor = 'transparent';
+                });
+                
+                // Hide the info box
+                document.getElementById('attentionInfo').classList.remove('visible');
+
+                // Clean up indicators after transition
+                setTimeout(() => {
+                    document.querySelectorAll('.weight-indicator').forEach(indicator => {
+                        indicator.remove();
+                    });
+                }, 300);
+            }, 200);
+        }
+
+        function displaySentence() {
+            const display = document.getElementById('sentenceDisplay');
+            if (sentence.length > 0) {
+                display.innerHTML = sentence.map(word => 
+                    `<span class="word-highlight" data-word="${word}">
+                        ${word}<span class="word-score"></span>
+                    </span>`
+                ).join(' ');
+            } else {
+                display.innerHTML = "<em>No sentence entered.</em>";
+            }
+        }
+
+        async function updateVisualization() {
+            if (!model) {
+                // This case should ideally be handled by the button being disabled
+                // or loadModel showing an error.
+                document.getElementById('loading').innerHTML = 
+                    '<div class="loading-content"><h2>Error</h2><p>Model not loaded. Cannot update.</p></div>';
+                document.getElementById('loading').style.display = 'flex';
+                return;
+            }
+
+            const loadingDiv = document.getElementById('loading');
+            loadingDiv.style.display = 'flex';
+            loadingDiv.innerHTML = 
+                '<div class="loading-content"><h2>Calculating...</h2><p>Fetching embeddings and computing attention scores...</p></div>';
+            
+            // Disable button during processing
+            document.getElementById('updateButton').disabled = true;
+
+            try {
+                const input = document.getElementById('sentenceInput').value;
+                // Split by one or more spaces, and filter out empty strings
+                sentence = input.trim().split(/\s+/).filter(w => w.length > 0);
+                
+                if (sentence.length === 0) {
+                    document.getElementById('attentionMatrix').innerHTML = '<p style="text-align:center;">Please enter a sentence.</p>';
+                    displaySentence(); // Update sentence display to show empty state
+                    loadingDiv.style.display = 'none';
+                    document.getElementById('updateButton').disabled = false;
+                    return;
+                }
+                
+                // Calculate new attention weights using USE embeddings
+                attentionWeights = await calculateAttentionWeights(sentence);
+                
+                // Clear existing visualization elements that will be rebuilt
+                document.getElementById('attentionMatrix').innerHTML = '';
+                
+                // Update visualization
+                displaySentence();
+                createAttentionMatrix();
+
+                updateSemanticPairs();
+
+                loadingDiv.style.display = 'none';
+            } catch (error) {
+                console.error('Error updating visualization:', error);
+                loadingDiv.innerHTML = 
+                    '<div class="loading-content"><h2>Error</h2><p>Failed to calculate attention weights. Please check the console for details.</p></div>';
+                // Keep loading visible to show error, or hide after a delay
+                // setTimeout(() => { loadingDiv.style.display = 'none'; }, 3000);
+            } finally {
+                 // Re-enable button
+                document.getElementById('updateButton').disabled = false;
+            }
+        }
+
+        function updateSemanticPairs() {
+            const commonPairs = [
+                { words: ['play', 'game'], desc: 'Action & Object', score: 0.85 },
+                { words: ['I', 'me'], desc: 'Personal Pronouns', score: 0.82 },
+                { words: ['we', 'us'], desc: 'Group Reference', score: 0.80 },
+                { words: ['the', 'a'], desc: 'Articles', score: 0.75 },
+                { words: ['is', 'are'], desc: 'Being Verbs', score: 0.78 },
+                { words: ['good', 'great'], desc: 'Positive Adjectives', score: 0.72 },
+                { words: ['run', 'running'], desc: 'Verb Forms', score: 0.70 },
+                { words: ['happy', 'glad'], desc: 'Emotions', score: 0.68 }
+            ];
+
+            const pairsContainer = document.getElementById('semanticPairs');
+            pairsContainer.innerHTML = commonPairs.map(pair => `
+                <div class="semantic-pair">
+                    <span class="score">${pair.score.toFixed(2)}</span>
+                    <span>${pair.words.join(' → ')}</span>
+                </div>
+            `).join('');
+        }
+
+        // Initialize by loading the model
+        loadModel();
+    </script>
+</body>
+</html>
